@@ -4,7 +4,7 @@ const { chromium } = require('playwright');
 const USERNAME = process.env.LOGIN_USERNAME;
 const PASSWORD = process.env.LOGIN_PASSWORD;
 const TOKEN = process.env.BROWSERLESS_TOKEN;
-const BROWSERLESS_URL = process.env.BROWSERLESS_URL || `wss://production-sfo.browserless.io?token=${TOKEN}`;
+const BROWSERLESS_URL = process.env.BROWSERLESS_URL || `wss://production-sfo.browserless.io?token=${TOKEN}` || 'https://production-sfo.browserless.io/function';
 
 // 2. HELPER: SESSION CLEANUP
 async function closeSession(browser, context) {
