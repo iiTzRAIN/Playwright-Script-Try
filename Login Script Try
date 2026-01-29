@@ -1,0 +1,79 @@
+const puppeteer = require('puppeteer-core');
+
+// 1. CONFIGURATION
+const TOKEN = "2TnNokhlJDQqila9bc0c6e36535b70f61e84fd8deb15d090e";
+const BROWSERLESS_URL = `wss://production-sfo.browserless.io?token=${TOKEN}`;
+
+// 2. HELPER: SESSION CLEANUP
+async function closeSession(browser, page) {
+  try {
+    console.log("Cleaning up session data...");
+    await page.evaluate(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    const cookies = await page.cookies();
+    if (cookies.length > 0) await page.deleteCookie(...cookies);
+    await browser.close();
+  } catch (err) {
+    if (browser) await browser.close();
+  }
+}
+
+// 3. MAIN EXECUTION
+const items = $input.all();
+const results = [];
+
+for (const item of items) {
+  let browser;
+  let page;
+  
+// Dynamically pull from the input JSON only
+  const USERNAME = item.json.username; 
+  const PASSWORD = item.json.password;
+
+  try {
+    browser = await puppeteer.connect({ browserWSEndpoint: BROWSERLESS_URL });
+    page = await browser.newPage();
+
+    // Helper: Fill Text Inputs [cite: 8, 9]
+    async function fillInput(selectorId, value) {
+      if (!value) return;
+      await page.waitForSelector(selectorId, { timeout: 5000 });
+      await page.click(selectorId, { clickCount: 3 });
+      await page.type(selectorId, String(value), { delay: 30 });
+    }
+
+    // Login Flow [cite: 15, 16]
+    await page.goto('https://jaccess.jclonline.my/JACCESS/login.php', { waitUntil: 'networkidle2', timeout: 60000 });
+    await fillInput('#login-userid-field', USERNAME);
+    await fillInput('#passwordorig', PASSWORD);
+    
+    const submitSelector = '#JURIS_LOGIN_SUBMIT';
+    await page.waitForSelector(submitSelector, { visible: true, timeout: 10000 });
+    await Promise.all([
+        page.click(submitSelector),
+        page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 60000 })
+    ]);
+
+    // Logout Flow [cite: 17, 18, 20]
+    const accountDropdown = '#control-account';
+    await page.waitForSelector(accountDropdown, { visible: true, timeout: 10000 });
+    await page.click(accountDropdown);
+    
+    const logoutSelector = 'a[href*="do_logout.php"]';
+    await page.waitForSelector(logoutSelector, { visible: true, timeout: 5000 });
+    await Promise.all([
+      page.click(logoutSelector),
+      page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 })
+    ]);
+
+    results.push({ json: { status: "Success", user: USERNAME } });
+  } catch (error) {
+    results.push({ json: { status: "Error", message: error.message, user: USERNAME } });
+  } finally {
+    if (browser && page) await closeSession(browser, page);
+  }
+}
+
+return results;
