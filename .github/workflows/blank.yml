@@ -27,4 +27,4 @@ jobs:
           LOGIN_USERNAME: ${{ secrets.MY_USERNAME }}
           LOGIN_PASSWORD: ${{ secrets.MY_PASSWORD }}
           BROWSERLESS_URL: ${{ secrets.BROWSERLESS_URL }}
-        run: node "Login Script Try.js"
+        run: node "Login Script Try.mjs"
