@@ -26,5 +26,5 @@ jobs:
         env:
           LOGIN_USERNAME: ${{ secrets.MY_USERNAME }}
           LOGIN_PASSWORD: ${{ secrets.MY_PASSWORD }}
-          BROWSERLESS_URL: ${{ secrets.BROWSERLESS_URL }}
+          BROWSERLESS_URL: ${{ secrets.BROWSERLESS_TOKEN }}
         run: node "Login Script Try.mjs"
