@@ -1,4 +1,4 @@
-const { chromium } = require('playwright');
+import { chromium } from "playwright-core";
 
 // 1. CONFIGURATION
 const USERNAME = process.env.LOGIN_USERNAME;
@@ -44,7 +44,7 @@ async function closeSession(browser, context) {
     console.log(`🚀 Connecting to Browserless (Playwright)...`);
     
     // Playwright connection
-    browser = await chromium.connect(BROWSERLESS_URL);
+    browser = await chromium.connect( `wss://production-sfo.browserless.io?token=${TOKEN}`);
     
     // Create a fresh context (incognito-like container)
     context = await browser.newContext();
