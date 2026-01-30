@@ -1,74 +1,42 @@
 import { chromium } from "playwright-core";
 
-// 1. CONFIGURATION
+// 1. CONFIGURATION & VALIDATION
+const TOKEN = process.env.BROWSERLESS_TOKEN;
 const USERNAME = process.env.LOGIN_USERNAME;
 const PASSWORD = process.env.LOGIN_PASSWORD;
-const TOKEN = process.env.BROWSERLESS_TOKEN;
-const BROWSERLESS_URL = process.env.BROWSERLESS_URL || `wss://production-sfo.browserless.io?token=${TOKEN}` || 'https://production-sfo.browserless.io/function';
 
-// 2. HELPER: SESSION CLEANUP
-async function closeSession(browser, context) {
-  try {
-    if (context) {
-      console.log("Cleaning up session data...");
-      // In Playwright, closing the context automatically clears cookies/storage
-      // associated with that context, but we can be explicit if needed.
-      await context.clearCookies();
-      await context.close();
-    }
-    if (browser) await browser.close();
-  } catch (err) {
-    console.error("Cleanup warning:", err.message);
-    if (browser) await browser.close();
-  }
+if (!TOKEN) {
+  throw new Error("BROWSERLESS_TOKEN is missing.");
 }
 
-// 3. MAIN EXECUTION
-(async () => {
-  // --- Validation ---
-  if (!USERNAME || !PASSWORD) {
-    console.error("❌ Error: Missing credentials (LOGIN_USERNAME, LOGIN_PASSWORD).");
-    process.exit(1);
-  }
+if (!USERNAME || !PASSWORD) {
+  throw new Error("Missing credentials (LOGIN_USERNAME or LOGIN_PASSWORD).");
+}
 
-  if (!BROWSERLESS_URL || BROWSERLESS_URL.includes("undefined")) {
-    console.error("❌ Error: Missing BROWSERLESS_URL or BROWSERLESS_TOKEN.");
-    process.exit(1);
-  }
+async function runLoginFlow() {
+  console.log(`🚀 Connecting to Browserless (CDP)...`);
 
-  let browser;
-  let context;
-  let page;
+  // Connect to Browserless using CDP (Matching Test.mjs schema)
+  const browser = await chromium.connectOverCDP(
+    `wss://production-sfo.browserless.io?token=${TOKEN}`
+  );
+
+  const context = await browser.newContext();
+  const page = await context.newPage();
 
   try {
-    console.log(`🚀 Connecting to Browserless (Playwright)...`);
-    
-    // Playwright connection
-    browser = await chromium.connect( `wss://production-sfo.browserless.io?token=${TOKEN}`);
-    
-    // Create a fresh context (incognito-like container)
-    context = await browser.newContext();
-    page = await context.newPage();
-    
     console.log(`✅ Connected. Navigating to login page...`);
 
-    // Helper: Fill Text Inputs (Mimicking your original delay logic)
+    // Helper: Fill Text Inputs (Preserved from your original script for human-like typing)
     async function fillInput(selector, value) {
       if (!value) return;
       const locator = page.locator(selector);
-      
-      // Wait for visibility
       await locator.waitFor({ state: 'visible', timeout: 10000 });
-      
-      // Triple click to select existing text (cleanup)
-      await locator.click({ clickCount: 3 });
-      
-      // Type with delay to simulate human behavior
+      await locator.click({ clickCount: 3 }); // Triple click to select all
       await locator.pressSequentially(String(value), { delay: 30 });
     }
 
     // --- Login Flow ---
-    // 'networkidle' in Playwright is similar to Puppeteer's 'networkidle0'
     await page.goto('https://jaccess.jclonline.my/JACCESS/login.php', { waitUntil: 'networkidle', timeout: 60000 });
 
     console.log("✍️  Filling credentials...");
@@ -76,14 +44,13 @@ async function closeSession(browser, context) {
     await fillInput('#passwordorig', PASSWORD);
 
     const submitSelector = '#JURIS_LOGIN_SUBMIT';
-    // Playwright auto-waits, but explicit wait ensures element is ready
     await page.waitForSelector(submitSelector, { state: 'visible', timeout: 10000 });
 
     console.log("ki️  Clicking Login...");
     
-    // Handling Navigation: Pattern is "Wait for event" -> "Trigger event"
+    // Wait for navigation and click
     await Promise.all([
-      page.waitForLoadState('networkidle', { timeout: 60000 }), // Wait for page to settle
+      page.waitForLoadState('networkidle', { timeout: 60000 }),
       page.click(submitSelector)
     ]);
 
@@ -104,12 +71,16 @@ async function closeSession(browser, context) {
     ]);
 
     console.log("✅ Logout Complete.");
-    process.exit(0);
 
   } catch (error) {
-    console.error(`❌ Automation Failed: ${error.message}`);
-    process.exit(1);
+    console.error("❌ Automation Error during flow:", error);
+    throw error; // Re-throw to be caught by the main catch block
   } finally {
-    await closeSession(browser, context);
+    // Clean up resources (Matching Test.mjs schema)
+    console.log("Cleaning up resources...");
+    await browser.close();
   }
-})();
+}
+
+// Execute and catch errors
+runLoginFlow().catch(console.error);
