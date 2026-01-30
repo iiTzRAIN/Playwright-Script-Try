@@ -3,28 +3,32 @@ name: Run Login Script
 on:
   push:
     branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
-  run-automation:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      # 1. Check out the repository
+      - uses: actions/checkout@v4
 
+      # 2. Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install Dependencies
+      # 3. Install Playwright Core
+      - name: Install dependencies
         run: npm install playwright-core
-
+        
       - name: Run Login Script
         # Inject secrets as Environment Variables
         env:
           LOGIN_USERNAME: ${{ secrets.MY_USERNAME }}
           LOGIN_PASSWORD: ${{ secrets.MY_PASSWORD }}
-          BROWSERLESS_URL: ${{ secrets.BROWSERLESS_TOKEN }}
+          BROWSERLESS_TOKEN: ${{ secrets.BROWSERLESS_TOKEN }} 
         run: node "Login Script Try.mjs"
